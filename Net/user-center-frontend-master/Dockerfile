@@ -3,7 +3,8 @@ FROM node:18-alpine AS builder
 WORKDIR /app
 
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN npm config set registry https://registry.npmmirror.com \
+    && npm ci --legacy-peer-deps --no-audit --no-fund
 
 COPY . .
 RUN npm run build

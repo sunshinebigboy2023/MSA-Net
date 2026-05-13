@@ -1,0 +1,16 @@
+node_modules/
+dist/
+build/
+.git/
+.gitignore
+.idea/
+.vscode/
+.cache/
+.npm/
+.pnpm-store/
+.yarn/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log

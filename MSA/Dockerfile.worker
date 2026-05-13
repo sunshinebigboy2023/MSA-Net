@@ -11,8 +11,11 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements-standalone.txt ./requirements-standalone.txt
-RUN pip install --no-cache-dir -r requirements-standalone.txt
+RUN pip install -i https://pypi.tuna.tsinghua.edu.cn/simple --no-cache-dir -r requirements-standalone.txt
 
-COPY . .
+COPY config.py ./config.py
+COPY msa_service ./msa_service
+COPY DT-MSA ./DT-MSA
+COPY GCNet ./GCNet
 
 CMD ["python", "-m", "msa_service.worker"]

@@ -11,8 +11,8 @@ import org.mockito.Mockito;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Collections;
 import java.util.Date;
-import java.util.Map;
 
 class AnalysisTaskServiceCleanupTest {
 
@@ -29,7 +29,7 @@ class AnalysisTaskServiceCleanupTest {
         AnalysisCallbackRequest request = new AnalysisCallbackRequest();
         request.setTaskId(task.getTaskId());
         request.setStatus(AnalysisTask.STATUS_SUCCESS);
-        request.setResult(Map.of("message", "ok"));
+        request.setResult(Collections.singletonMap("message", "ok"));
 
         service.completeFromCallback(request);
 
@@ -68,7 +68,8 @@ class AnalysisTaskServiceCleanupTest {
         AnalysisTask task = new AnalysisTask();
         task.setTaskId("task-1");
         task.setStatus(AnalysisTask.STATUS_QUEUED);
-        task.setPayload(new ObjectMapper().writeValueAsString(Map.of("videoFile", upload.toAbsolutePath().toString())));
+        task.setPayload(new ObjectMapper().writeValueAsString(
+                Collections.singletonMap("videoFile", upload.toAbsolutePath().toString())));
         task.setCreateTime(new Date());
         task.setUpdateTime(new Date());
         return task;

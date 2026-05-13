@@ -2,6 +2,14 @@
 
 MSA-Net 是一个面向文本、音频、视频的多模态情感分析系统。本仓库在原有 MSA 推理能力基础上，补齐了 Spring Boot 后端、前端页面、异步任务队列、Redis 限流、MySQL 任务状态持久化、Python 推理 Worker 和 Docker Compose 一键部署，提供可演示、可压测、可部署的工程化服务。
 
+仓库地址：<https://github.com/sunshinebigboy2023/MSA-Net>
+
+克隆仓库：
+
+```bash
+git clone https://github.com/sunshinebigboy2023/MSA-Net.git
+```
+
 ## 项目亮点
 
 - 多模态情感分析：支持文本输入和视频上传，后续由 MSA worker 进行特征提取与情感推理。
