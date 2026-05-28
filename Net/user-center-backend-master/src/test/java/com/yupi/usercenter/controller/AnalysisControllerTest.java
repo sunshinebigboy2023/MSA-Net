@@ -13,6 +13,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import static com.yupi.usercenter.contant.UserConstant.USER_LOGIN_STATE;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -56,5 +57,23 @@ class AnalysisControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(0))
                 .andExpect(jsonPath("$.data.taskId").value("task-1"));
+    }
+
+    @Test
+    void getTaskUsesCurrentUserId() throws Exception {
+        User user = new User();
+        user.setId(9L);
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute(USER_LOGIN_STATE, user);
+
+        AnalysisTaskResponse response = new AnalysisTaskResponse();
+        response.setTaskId("task-99");
+        response.setStatus("QUEUED");
+        Mockito.when(analysisService.getTask("task-99", 9L)).thenReturn(response);
+
+        mockMvc.perform(get("/analysis/task/task-99").session(session))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.taskId").value("task-99"));
     }
 }

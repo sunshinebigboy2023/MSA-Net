@@ -185,6 +185,7 @@ const Welcome: React.FC = () => {
           language,
           enhanceTextWithTranscript,
           video,
+          browserLanguage: window.navigator.language,
         }),
       );
       setTask(nextTask);

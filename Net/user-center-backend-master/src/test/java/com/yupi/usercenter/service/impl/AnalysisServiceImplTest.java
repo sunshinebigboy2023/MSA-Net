@@ -78,6 +78,47 @@ class AnalysisServiceImplTest {
     }
 
     @Test
+    void submitRejectsUnsupportedExtension() {
+        CapturingClient client = new CapturingClient();
+        MsaProperties properties = new MsaProperties();
+        properties.setUploadDir("target/test-uploads-invalid-extension");
+        AnalysisServiceImpl service = new AnalysisServiceImpl(client, properties);
+        User user = new User();
+        user.setId(12L);
+        MockMultipartFile video = new MockMultipartFile("video", "sample.exe", "video/mp4", new byte[]{1, 2, 3});
+
+        Assertions.assertThrows(BusinessException.class, () -> service.submit("", "en", false, video, user));
+    }
+
+    @Test
+    void submitRejectsUnsupportedMimeType() {
+        CapturingClient client = new CapturingClient();
+        MsaProperties properties = new MsaProperties();
+        properties.setUploadDir("target/test-uploads-invalid-mime");
+        AnalysisServiceImpl service = new AnalysisServiceImpl(client, properties);
+        User user = new User();
+        user.setId(13L);
+        MockMultipartFile video = new MockMultipartFile("video", "sample.mp4", "image/png", new byte[]{1, 2, 3});
+
+        Assertions.assertThrows(BusinessException.class, () -> service.submit("", "en", false, video, user));
+    }
+
+    @Test
+    void submitRejectsVideoLargerThanConfiguredLimit() {
+        CapturingClient client = new CapturingClient();
+        MsaProperties properties = new MsaProperties();
+        properties.setUploadDir("target/test-uploads-too-large");
+        properties.setMaxVideoSizeMb(1L);
+        AnalysisServiceImpl service = new AnalysisServiceImpl(client, properties);
+        User user = new User();
+        user.setId(14L);
+        byte[] content = new byte[1024 * 1024 + 1];
+        MockMultipartFile video = new MockMultipartFile("video", "sample.mp4", "video/mp4", content);
+
+        Assertions.assertThrows(BusinessException.class, () -> service.submit("", "en", false, video, user));
+    }
+
+    @Test
     void submitVideoFallsBackToInputStreamWhenTransferToFails() throws Exception {
         CapturingClient client = new CapturingClient();
         MsaProperties properties = new MsaProperties();

@@ -33,6 +33,9 @@ public class AnalysisCallbackController {
     public BaseResponse<AnalysisTaskResponse> complete(
             @RequestHeader(value = "X-MSA-Callback-Token", required = false) String token,
             @RequestBody AnalysisCallbackRequest request) {
+        if (StringUtils.isBlank(properties.getCallbackToken())) {
+            throw new BusinessException(ErrorCode.NO_AUTH, "MSA callback token is not configured");
+        }
         if (!StringUtils.equals(properties.getCallbackToken(), token)) {
             throw new BusinessException(ErrorCode.NO_AUTH, "Invalid MSA callback token");
         }

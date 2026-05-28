@@ -3,24 +3,25 @@ spring:
   application:
     name: user-center-backend
   redis:
-    host: localhost
-    port: 6379
-    database: 0
+    host: ${REDIS_HOST:localhost}
+    port: ${REDIS_PORT:6379}
+    password: ${REDIS_PASSWORD:}
+    database: ${REDIS_DATABASE:0}
     timeout: 5000
   rabbitmq:
-    host: localhost
-    port: 5672
-    username: guest
-    password: guest
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:}
   servlet:
     multipart:
-      max-file-size: 500MB
-      max-request-size: 500MB
+      max-file-size: ${MSA_UPLOAD_MAX_VIDEO_SIZE_MB:200}MB
+      max-request-size: ${MSA_UPLOAD_MAX_VIDEO_SIZE_MB:200}MB
   datasource:
-    driver-class-name: com.mysql.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/yupi
-    username: root
-    password: root
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:yupi}?useSSL=false&serverTimezone=Asia/Shanghai&connectTimeout=10000&socketTimeout=30000&tcpKeepAlive=true
+    username: ${MYSQL_USERNAME:msa_user}
+    password: ${MYSQL_PASSWORD:}
   session:
     timeout: 86400
 server:
@@ -28,15 +29,16 @@ server:
   servlet:
     context-path: /api
 msa:
-  base-url: http://127.0.0.1:8000
-  upload-dir: runtime/uploads
-  async-enabled: true
-  submit-limit: 20
-  submit-window-seconds: 60
-  max-retry-count: 3
-  stale-task-seconds: 300
-  retry-delay-ms: 30000
-  callback-token: msa-worker-token
+  base-url: ${MSA_BASE_URL:http://127.0.0.1:8000}
+  upload-dir: ${MSA_UPLOAD_DIR:runtime/uploads}
+  max-video-size-mb: ${MSA_UPLOAD_MAX_VIDEO_SIZE_MB:200}
+  async-enabled: ${MSA_ASYNC_ENABLED:true}
+  submit-limit: ${MSA_SUBMIT_LIMIT:20}
+  submit-window-seconds: ${MSA_SUBMIT_WINDOW_SECONDS:60}
+  max-retry-count: ${MSA_MAX_RETRY_COUNT:3}
+  stale-task-seconds: ${MSA_STALE_TASK_SECONDS:300}
+  retry-delay-ms: ${MSA_RETRY_DELAY_MS:30000}
+  callback-token: ${MSA_CALLBACK_TOKEN:}
 management:
   endpoints:
     web:

@@ -15,6 +15,8 @@ public class MsaProperties {
 
     private Boolean asyncEnabled = true;
 
+    private Long maxVideoSizeMb = 200L;
+
     private Integer submitLimit = 20;
 
     private Integer submitWindowSeconds = 60;
@@ -25,5 +27,5 @@ public class MsaProperties {
 
     private Integer retryDelayMs = 30000;
 
-    private String callbackToken = "msa-worker-token";
+    private String callbackToken;
 }

@@ -18,12 +18,17 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
 public class AnalysisTaskService {
+
+    private static final Set<String> TERMINAL_STATUSES = new HashSet<>(
+            Arrays.asList(AnalysisTask.STATUS_SUCCESS, AnalysisTask.STATUS_FAILED, AnalysisTask.STATUS_DEAD_LETTER));
 
     private final AnalysisTaskMapper taskMapper;
 
@@ -54,23 +59,30 @@ public class AnalysisTaskService {
         return taskMapper.selectOne(new QueryWrapper<AnalysisTask>().eq("taskId", taskId).last("limit 1"));
     }
 
-    public AnalysisTaskResponse getTaskResponse(String taskId) {
+    public AnalysisTask getByTaskIdAndUserId(String taskId, Long userId) {
+        return taskMapper.selectOne(new QueryWrapper<AnalysisTask>()
+                .eq("taskId", taskId)
+                .eq("userId", userId)
+                .last("limit 1"));
+    }
+
+    public AnalysisTaskResponse getTaskResponse(String taskId, Long userId) {
+        AnalysisTask task = requireOwnedTask(taskId, userId);
         AnalysisTaskResponse cached = cacheService.getCachedTask(taskId);
         if (cached != null) {
             return cached;
         }
-        AnalysisTask task = requireTask(taskId);
         AnalysisTaskResponse response = AnalysisCacheService.toTaskResponse(task);
         cacheService.cacheTask(task);
         return response;
     }
 
-    public AnalysisResultResponse getResultResponse(String taskId) {
+    public AnalysisResultResponse getResultResponse(String taskId, Long userId) {
+        AnalysisTask task = requireOwnedTask(taskId, userId);
         AnalysisResultResponse cached = cacheService.getCachedResult(taskId);
         if (cached != null) {
             return cached;
         }
-        AnalysisTask task = requireTask(taskId);
         if (task.getResult() == null) {
             AnalysisResultResponse response = new AnalysisResultResponse();
             response.setTaskId(task.getTaskId());
@@ -89,6 +101,16 @@ public class AnalysisTaskService {
 
     public AnalysisTask completeFromCallback(AnalysisCallbackRequest request) {
         AnalysisTask task = requireTask(request.getTaskId());
+        String currentStatus = task.getStatus();
+        String nextStatus = request.getStatus();
+        if (isTerminalStatus(currentStatus)) {
+            // Long-running async tasks may receive duplicate, delayed, or stale callbacks.
+            // Terminal states must stay immutable so an old callback cannot overwrite the final outcome.
+            return task;
+        }
+        if (!isAllowedCallbackTransition(currentStatus, nextStatus)) {
+            return task;
+        }
         task.setStatus(request.getStatus());
         task.setError(request.getError());
         task.setProcessingTimeMs(request.getProcessingTimeMs());
@@ -107,6 +129,9 @@ public class AnalysisTaskService {
 
     public void markRunning(String taskId) {
         AnalysisTask task = requireTask(taskId);
+        if (isTerminalStatus(task.getStatus())) {
+            return;
+        }
         task.setStatus(AnalysisTask.STATUS_RUNNING);
         task.setUpdateTime(new Date());
         taskMapper.update(task, new QueryWrapper<AnalysisTask>().eq("taskId", taskId));
@@ -115,6 +140,9 @@ public class AnalysisTaskService {
 
     public void markFailed(String taskId, String status, String error) {
         AnalysisTask task = requireTask(taskId);
+        if (isTerminalStatus(task.getStatus())) {
+            return;
+        }
         task.setStatus(status);
         task.setError(error);
         task.setUpdateTime(new Date());
@@ -124,6 +152,9 @@ public class AnalysisTaskService {
 
     public void incrementRetry(String taskId) {
         AnalysisTask task = requireTask(taskId);
+        if (isTerminalStatus(task.getStatus())) {
+            return;
+        }
         int retryCount = task.getRetryCount() == null ? 0 : task.getRetryCount();
         task.setRetryCount(retryCount + 1);
         task.setStatus(AnalysisTask.STATUS_RETRYING);
@@ -152,6 +183,14 @@ public class AnalysisTaskService {
         AnalysisTask task = getByTaskId(taskId);
         if (task == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "Analysis task not found");
+        }
+        return task;
+    }
+
+    private AnalysisTask requireOwnedTask(String taskId, Long userId) {
+        AnalysisTask task = getByTaskIdAndUserId(taskId, userId);
+        if (task == null) {
+            throw new BusinessException(ErrorCode.NO_AUTH, "Analysis task not found or not accessible");
         }
         return task;
     }
@@ -192,8 +231,28 @@ public class AnalysisTaskService {
     }
 
     private boolean isTerminalStatus(String status) {
-        return AnalysisTask.STATUS_SUCCESS.equals(status)
-                || AnalysisTask.STATUS_FAILED.equals(status)
-                || AnalysisTask.STATUS_DEAD_LETTER.equals(status);
+        return TERMINAL_STATUSES.contains(status);
+    }
+
+    private boolean isAllowedCallbackTransition(String currentStatus, String nextStatus) {
+        if (AnalysisTask.STATUS_RUNNING.equals(nextStatus)) {
+            return AnalysisTask.STATUS_QUEUED.equals(currentStatus)
+                    || AnalysisTask.STATUS_RETRYING.equals(currentStatus);
+        }
+        if (AnalysisTask.STATUS_SUCCESS.equals(nextStatus)) {
+            return AnalysisTask.STATUS_RUNNING.equals(currentStatus)
+                    || AnalysisTask.STATUS_QUEUED.equals(currentStatus)
+                    || AnalysisTask.STATUS_RETRYING.equals(currentStatus);
+        }
+        if (AnalysisTask.STATUS_FAILED.equals(nextStatus)) {
+            return AnalysisTask.STATUS_RUNNING.equals(currentStatus)
+                    || AnalysisTask.STATUS_QUEUED.equals(currentStatus)
+                    || AnalysisTask.STATUS_RETRYING.equals(currentStatus);
+        }
+        if (AnalysisTask.STATUS_RETRYING.equals(nextStatus)) {
+            return AnalysisTask.STATUS_QUEUED.equals(currentStatus)
+                    || AnalysisTask.STATUS_RUNNING.equals(currentStatus);
+        }
+        return false;
     }
 }

@@ -21,13 +21,25 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
 public class AnalysisServiceImpl implements AnalysisService {
+
+    private static final Set<String> ALLOWED_VIDEO_EXTENSIONS = new HashSet<>(
+            Arrays.asList(".mp4", ".mov", ".avi", ".mkv"));
+
+    private static final Set<String> ALLOWED_VIDEO_MIME_TYPES = new HashSet<>(
+            Arrays.asList("video/mp4", "video/quicktime", "video/x-msvideo", "video/x-matroska"));
+
+    private static final List<String> OCTET_STREAM_MIME_TYPES = Arrays.asList("application/octet-stream");
 
     private final MsaClient msaClient;
 
@@ -68,8 +80,9 @@ public class AnalysisServiceImpl implements AnalysisService {
             Boolean enhanceTextWithTranscript,
             MultipartFile video,
             User currentUser) {
+        validateVideo(video);
         boolean hasText = StringUtils.isNotBlank(text);
-        boolean hasVideo = video != null && !video.isEmpty();
+        boolean hasVideo = video != null;
         if (!hasText && !hasVideo) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "Please enter text or upload a video");
         }
@@ -106,17 +119,17 @@ public class AnalysisServiceImpl implements AnalysisService {
     }
 
     @Override
-    public AnalysisTaskResponse getTask(String taskId) {
+    public AnalysisTaskResponse getTask(String taskId, Long userId) {
         if (useAsyncQueue()) {
-            return taskService.getTaskResponse(taskId);
+            return taskService.getTaskResponse(taskId, userId);
         }
         return msaClient.getTask(taskId);
     }
 
     @Override
-    public AnalysisResultResponse getResult(String taskId) {
+    public AnalysisResultResponse getResult(String taskId, Long userId) {
         if (useAsyncQueue()) {
-            return taskService.getResultResponse(taskId);
+            return taskService.getResultResponse(taskId, userId);
         }
         return msaClient.getResult(taskId);
     }
@@ -138,6 +151,39 @@ public class AnalysisServiceImpl implements AnalysisService {
             return value;
         }
         return null;
+    }
+
+    private void validateVideo(MultipartFile video) {
+        if (video == null) {
+            return;
+        }
+        if (video.isEmpty()) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "Uploaded video must not be empty");
+        }
+        long maxVideoSizeBytes = properties.getMaxVideoSizeMb() * 1024L * 1024L;
+        if (video.getSize() > maxVideoSizeBytes) {
+            throw new BusinessException(
+                    ErrorCode.PARAMS_ERROR,
+                    "Uploaded video exceeds the size limit of " + properties.getMaxVideoSizeMb() + "MB");
+        }
+
+        String extension = extensionOf(video.getOriginalFilename());
+        if (!ALLOWED_VIDEO_EXTENSIONS.contains(extension)) {
+            throw new BusinessException(
+                    ErrorCode.PARAMS_ERROR,
+                    "Unsupported video extension. Allowed extensions: .mp4, .mov, .avi, .mkv");
+        }
+
+        String mimeType = StringUtils.trimToEmpty(video.getContentType()).toLowerCase(Locale.ROOT);
+        if (ALLOWED_VIDEO_MIME_TYPES.contains(mimeType)) {
+            return;
+        }
+        if (OCTET_STREAM_MIME_TYPES.contains(mimeType)) {
+            return;
+        }
+        throw new BusinessException(
+                ErrorCode.PARAMS_ERROR,
+                "Unsupported video MIME type. Allowed MIME types: video/mp4, video/quicktime, video/x-msvideo, video/x-matroska");
     }
 
     private Path saveVideo(MultipartFile video, User currentUser) {

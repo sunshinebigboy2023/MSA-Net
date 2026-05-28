@@ -9,7 +9,7 @@ public interface AnalysisService {
 
     AnalysisTaskResponse submit(String text, String language, Boolean enhanceTextWithTranscript, MultipartFile video, User currentUser);
 
-    AnalysisTaskResponse getTask(String taskId);
+    AnalysisTaskResponse getTask(String taskId, Long userId);
 
-    AnalysisResultResponse getResult(String taskId);
+    AnalysisResultResponse getResult(String taskId, Long userId);
 }

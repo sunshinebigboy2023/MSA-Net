@@ -42,14 +42,14 @@ public class AnalysisController {
 
     @GetMapping("/task/{taskId}")
     public BaseResponse<AnalysisTaskResponse> getTask(@PathVariable String taskId, HttpServletRequest request) {
-        requireLogin(request);
-        return ResultUtils.success(analysisService.getTask(taskId));
+        User currentUser = requireLogin(request);
+        return ResultUtils.success(analysisService.getTask(taskId, currentUser.getId()));
     }
 
     @GetMapping("/result/{taskId}")
     public BaseResponse<AnalysisResultResponse> getResult(@PathVariable String taskId, HttpServletRequest request) {
-        requireLogin(request);
-        return ResultUtils.success(analysisService.getResult(taskId));
+        User currentUser = requireLogin(request);
+        return ResultUtils.success(analysisService.getResult(taskId, currentUser.getId()));
     }
 
     private User requireLogin(HttpServletRequest request) {
